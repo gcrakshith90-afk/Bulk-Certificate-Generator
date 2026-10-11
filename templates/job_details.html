@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Job #{{ job.id }} - {{ job.course_name }}{% endblock %}
+{% block page_title %}Job #{{ job.id }} Details{% endblock %}
+{% block page_subtitle %}{{ job.organization.name }} &bull; {{ job.course_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Top Summary Banner -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h4 class="fw-bold mb-0 text-dark">Job #{{ job.id }}: {{ job.course_name }}</h4>
+                            <span class="badge-status status-{{ job.status|lower|replace(' ', '-') }}" id="jobStatusBadge">
+                                {{ job.status }}
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Organization: <strong>{{ job.organization.name }}</strong> &bull; 
+                            Title: <strong>{{ job.certificate_title }}</strong> &bull; 
+                            Source: <span class="badge bg-light text-dark border text-uppercase">{{ job.source_type }}</span> &bull; 
+                            Created on {{ job.created_at.strftime('%B %d, %Y at %H:%M UTC') }}
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if job.completed > 0 %}
+                        <a href="{{ url_for('jobs.download_zip', job_id=job.id) }}" class="btn btn-success btn-sm d-inline-flex align-items-center gap-1 shadow-sm">
+                            <i class="bi bi-file-earmark-zip"></i>
+                            <span>Download ZIP ({{ job.completed }})</span>
+                        </a>
+                        {% endif %}
+
+                        {% if job.failed > 0 and job.status != 'Processing' %}
+                        <form action="{{ url_for('jobs.retry_job', job_id=job.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Retry generating all failed certificates?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-warning btn-sm d-inline-flex align-items-center gap-1 text-dark shadow-sm">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                <span>Retry Failed ({{ job.failed }})</span>
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if job.status in ['Queued', 'Processing'] %}
+                        <form action="{{ url_for('jobs.cancel_job', job_id=job.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this running job?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-x-circle"></i>
+                                <span>Cancel Job</span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Progress Bar Section -->
+                <div class="bg-light p-3 rounded border mb-3">
+                    <div class="d-flex justify-content-between align-items-center small mb-2">
+                        <span class="fw-semibold text-secondary">Batch Progress</span>
+                        <span class="fw-bold text-dark" id="jobProgressText">{{ job.progress_percentage }}% ({{ job.completed + job.failed }} of {{ job.total }} processed)</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped {% if job.status == 'Processing' %}progress-bar-animated{% endif %} {% if job.failed > 0 %}bg-warning{% else %}bg-primary{% endif %}" id="jobProgressBar" role="progressbar" style="width: {{ job.progress_percentage }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="row g-2 text-center">
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Total</small>
+                            <span class="fw-bold fs-5 text-dark" id="metricTotal">{{ job.total }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Completed</small>
+                            <span class="fw-bold fs-5 text-success" id="metricCompleted">{{ job.completed }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Failed</small>
+                            <span class="fw-bold fs-5 text-danger" id="metricFailed">{{ job.failed }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Pending</small>
+                            <span class="fw-bold fs-5 text-secondary" id="metricPending">{{ job.pending_count }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Success Rate</small>
+                            <span class="fw-bold fs-5 text-primary" id="metricSuccessRate">{{ job.success_rate }}%</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-2 border rounded bg-white">
+                            <small class="text-muted d-block">Duration</small>
+                            <span class="fw-bold fs-6 text-dark" style="line-height: 1.8;">
+                                {% if job.started_at and job.completed_at %}
+                                    {{ (job.completed_at - job.started_at).seconds }}s
+                                {% elif job.status == 'Processing' %}
+                                    <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span> Active
+                                {% else %}
+                                    Pending
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipient Results Table -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <h5 class="fw-bold mb-0 text-dark">Recipients & Certificates ({{ pagination.total }})</h5>
+                    <!-- Filter Pills -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id, cert_search=cert_search) }}" class="btn btn-outline-secondary {% if not cert_status %}active{% endif %}">All</a>
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id, cert_status='Completed', cert_search=cert_search) }}" class="btn btn-outline-success {% if cert_status == 'Completed' %}active{% endif %}">Completed</a>
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id, cert_status='Failed', cert_search=cert_search) }}" class="btn btn-outline-danger {% if cert_status == 'Failed' %}active{% endif %}">Failed</a>
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id, cert_status='Pending', cert_search=cert_search) }}" class="btn btn-outline-secondary {% if cert_status == 'Pending' %}active{% endif %}">Pending</a>
+                    </div>
+                </div>
+
+                <!-- Recipient Search -->
+                <form method="GET" action="{{ url_for('jobs.view_job', job_id=job.id) }}" class="d-flex gap-2">
+                    {% if cert_status %}
+                    <input type="hidden" name="cert_status" value="{{ cert_status }}">
+                    {% endif %}
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="cert_search" class="form-control" placeholder="Search name or code..." value="{{ cert_search }}">
+                        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Recipient Name</th>
+                            <th>Email Address</th>
+                            <th>Certificate Code</th>
+                            <th>Status</th>
+                            <th>Generated At</th>
+                            <th>Error Details</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recipientsTableBody">
+                        {% if certificates %}
+                            {% for cert in certificates %}
+                            <tr>
+                                <td class="fw-semibold text-dark">{{ cert.recipient_name }}</td>
+                                <td>{{ cert.recipient_email }}</td>
+                                <td>
+                                    <code>{{ cert.certificate_code }}</code>
+                                </td>
+                                <td>
+                                    {% if cert.status == 'Completed' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Completed</span>
+                                    {% elif cert.status == 'Failed' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-x-circle me-1"></i>Failed</span>
+                                    {% elif cert.status == 'Processing' %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-hourglass-split me-1"></i>Processing</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border"><i class="bi bi-clock me-1"></i>Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small text-muted">
+                                    {{ cert.generated_at.strftime('%b %d, %H:%M:%S') if cert.generated_at else '-' }}
+                                </td>
+                                <td>
+                                    {% if cert.error_message %}
+                                        <span class="text-danger small" title="{{ cert.error_message }}"><i class="bi bi-exclamation-triangle me-1"></i>{{ cert.error_message[:40] }}...</span>
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a href="{{ url_for('certificates.view_certificate', cert_id=cert.id) }}" class="btn btn-sm btn-light border" title="View Certificate Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if cert.status == 'Completed' and cert.file_path %}
+                                        <a href="{{ url_for('certificates.download_certificate', cert_id=cert.id) }}" class="btn btn-sm btn-primary" title="Download PDF">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-light border text-muted" disabled title="PDF not available"><i class="bi bi-download"></i></button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state py-4 text-center">
+                                        <p class="text-muted mb-0">No certificates match the selected filter criteria.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+            <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+                <nav aria-label="Certificates pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('jobs.view_job', job_id=job.id, page=pagination.prev_num, cert_status=cert_status, cert_search=cert_search) }}">Previous</a>
+                        </li>
+                        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if p %}
+                                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('jobs.view_job', job_id=job.id, page=p, cert_status=cert_status, cert_search=cert_search) }}">{{ p }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('jobs.view_job', job_id=job.id, page=pagination.next_num, cert_status=cert_status, cert_search=cert_search) }}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Live Progress Polling for Running/Queued Jobs
+    const jobId = {{ job.id }};
+    const currentStatus = "{{ job.status }}";
+
+    if (currentStatus === "Queued" || currentStatus === "Processing") {
+        const pollInterval = setInterval(() => {
+            fetch(`/jobs/${jobId}/progress`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update Progress Bar
+                        const progressBar = document.getElementById('jobProgressBar');
+                        const progressText = document.getElementById('jobProgressText');
+                        progressBar.style.width = data.progress_percentage + '%';
+                        progressText.textContent = `${data.progress_percentage}% (${data.completed + data.failed} of ${data.total} processed)`;
+
+                        // Update Metrics
+                        document.getElementById('metricTotal').textContent = data.total;
+                        document.getElementById('metricCompleted').textContent = data.completed;
+                        document.getElementById('metricFailed').textContent = data.failed;
+                        document.getElementById('metricPending').textContent = data.pending;
+                        document.getElementById('metricSuccessRate').textContent = data.success_rate + '%';
+
+                        // Update Status Badge
+                        const badge = document.getElementById('jobStatusBadge');
+                        badge.className = `badge-status status-${data.status.toLowerCase().replace(/ /g, '-')}`;
+                        badge.textContent = data.status;
+
+                        // If finished, reload page once to refresh recipient table and action buttons
+                        if (data.is_finished) {
+                            clearInterval(pollInterval);
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1200);
+                        }
+                    }
+                })
+                .catch(err => console.error("Progress poll error:", err));
+        }, 2000);
+    }
+</script>
+{% endblock %}

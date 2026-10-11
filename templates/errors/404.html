@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found (404){% endblock %}
+{% block page_title %}404 Not Found{% endblock %}
+{% block page_subtitle %}The requested resource could not be found{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-6 text-center">
+        <div class="empty-state">
+            <div class="display-1 fw-bold text-primary mb-3">404</div>
+            <h4 class="fw-bold mb-2">Resource Not Found</h4>
+            <p class="text-muted mb-4">{{ error_description or "The page or certificate you are looking for does not exist or has been moved." }}</p>
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary px-4">
+                <i class="bi bi-house-door me-1"></i> Return to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

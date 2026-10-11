@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Generation Jobs{% endblock %}
+{% block page_title %}Generation Jobs Management{% endblock %}
+{% block page_subtitle %}Track, monitor, and manage certificate bulk generation batches{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1">Batch Generation Jobs</h4>
+        <p class="text-muted small mb-0">Total {{ pagination.total }} generation jobs tracked</p>
+    </div>
+    <a href="{{ url_for('bulk.generate') }}" class="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-plus-lg"></i>
+        <span>New Generation Job</span>
+    </a>
+</div>
+
+<!-- Filters Bar -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('jobs.list_jobs') }}" class="row g-2 align-items-center">
+            <div class="col-lg-3 col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Job ID, Org, or Course..." value="{{ search }}">
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    <option value="Queued" {% if status_filter == 'Queued' %}selected{% endif %}>Queued</option>
+                    <option value="Processing" {% if status_filter == 'Processing' %}selected{% endif %}>Processing</option>
+                    <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Completed with failures" {% if status_filter == 'Completed with failures' %}selected{% endif %}>Completed with failures</option>
+                    <option value="Failed" {% if status_filter == 'Failed' %}selected{% endif %}>Failed</option>
+                    <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-4">
+                <select name="org_id" class="form-select form-select-sm">
+                    <option value="">All Organizations</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}" {% if org_filter == org.id %}selected{% endif %}>{{ org.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-4">
+                <select name="source" class="form-select form-select-sm">
+                    <option value="">All Sources</option>
+                    <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Manual Entry</option>
+                    <option value="csv" {% if source_filter == 'csv' %}selected{% endif %}>CSV Upload</option>
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-4">
+                <input type="date" name="date_from" class="form-control form-control-sm" title="From Date" value="{{ date_from }}">
+            </div>
+            <div class="col-lg-1 col-md-12 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+                {% if search or status_filter or org_filter or source_filter or date_from or date_to %}
+                    <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-secondary btn-sm" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Jobs Table -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Organization</th>
+                    <th>Course / Program</th>
+                    <th>Source</th>
+                    <th>Total</th>
+                    <th>Success / Fail</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if jobs %}
+                    {% for job in jobs %}
+                    <tr>
+                        <td class="fw-bold">
+                            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="text-decoration-none text-primary">
+                                #{{ job.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ job.organization.name }}</div>
+                            <small class="text-muted text-capitalize">{{ job.organization.organization_type }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ job.course_name }}</div>
+                            <small class="text-muted">{{ job.certificate_title }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border text-uppercase" style="font-size: 0.72rem;">{{ job.source_type }}</span>
+                        </td>
+                        <td class="fw-bold">{{ job.total }}</td>
+                        <td>
+                            <span class="text-success fw-semibold">{{ job.completed }}</span> / 
+                            <span class="{% if job.failed > 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">{{ job.failed }}</span>
+                        </td>
+                        <td style="min-width: 140px;">
+                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                <span>{{ job.progress_percentage }}%</span>
+                                <span>{{ job.completed + job.failed }}/{{ job.total }}</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar {% if job.failed > 0 %}bg-warning{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ job.progress_percentage }}%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge-status status-{{ job.status|lower|replace(' ', '-') }}">
+                                {{ job.status }}
+                            </span>
+                        </td>
+                        <td class="small text-muted">
+                            {{ job.created_at.strftime('%b %d, %Y') }}<br>
+                            <span style="font-size: 0.75rem;">{{ job.created_at.strftime('%H:%M UTC') }}</span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state py-5">
+                                <i class="bi bi-cpu empty-state-icon"></i>
+                                <h5 class="fw-bold mb-1">No generation jobs found</h5>
+                                <p class="text-muted small mb-3">Launch a new bulk certificate generation job to see it listed here.</p>
+                                <a href="{{ url_for('bulk.generate') }}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-plus-lg me-1"></i> Generate Certificates
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+        <nav aria-label="Jobs pagination">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('jobs.list_jobs', page=pagination.prev_num, search=search, status=status_filter, org_id=org_filter, source=source_filter, date_from=date_from, date_to=date_to) }}">Previous</a>
+                </li>
+                {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('jobs.list_jobs', page=p, search=search, status=status_filter, org_id=org_filter, source=source_filter, date_from=date_from, date_to=date_to) }}">{{ p }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('jobs.list_jobs', page=pagination.next_num, search=search, status=status_filter, org_id=org_filter, source=source_filter, date_from=date_from, date_to=date_to) }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

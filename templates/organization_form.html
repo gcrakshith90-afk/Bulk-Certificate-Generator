@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_subtitle %}{% if is_edit %}Modify details for {{ org.name }}{% else %}Register a new company or academic institution{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-building me-2 text-primary"></i>
+                    {% if is_edit %}Edit Organization{% else %}New Organization Information{% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold text-secondary">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="e.g. Stanford University / Tech Corp Inc.") }}
+                            {% for error in form.name.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary">{{ form.organization_type.label.text }} <span class="text-danger">*</span></label>
+                            {{ form.organization_type(class="form-select" + (" is-invalid" if form.organization_type.errors else "")) }}
+                            {% for error in form.organization_type.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">{{ form.contact_person.label.text }} <span class="text-danger">*</span></label>
+                            {{ form.contact_person(class="form-control" + (" is-invalid" if form.contact_person.errors else ""), placeholder="e.g. Dr. Jane Smith") }}
+                            {% for error in form.contact_person.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">{{ form.contact_email.label.text }} <span class="text-danger">*</span></label>
+                            {{ form.contact_email(class="form-control" + (" is-invalid" if form.contact_email.errors else ""), placeholder="e.g. contact@institution.edu") }}
+                            {% for error in form.contact_email.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">{{ form.phone.label.text }}</label>
+                            {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), placeholder="e.g. +1 (555) 019-2834") }}
+                            {% for error in form.phone.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-secondary">{{ form.address.label.text }}</label>
+                            {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows=3, placeholder="Street address, city, state, postal code") }}
+                            {% for error in form.address.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                {{ form.is_active(class="form-check-input") }}
+                                <label class="form-check-label fw-semibold text-dark" for="is_active">Active status (allows generation of certificates)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 pt-3 border-top mt-4">
+                            <a href="{{ url_for('organizations.list_orgs') }}" class="btn btn-light border px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                <i class="bi bi-check-lg me-1"></i> Save Organization
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

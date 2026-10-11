@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Certificate Generation{% endblock %}
+{% block page_title %}Bulk Certificate Generation{% endblock %}
+{% block page_subtitle %}Create certificates via manual recipient input or batch CSV import{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <!-- Generation Methods Nav Tabs -->
+        <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded shadow-sm border" id="bulkTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active py-2 fw-semibold d-flex align-items-center justify-content-center gap-2" id="manual-tab" data-bs-toggle="pill" data-bs-target="#manual-pane" type="button" role="tab">
+                    <i class="bi bi-pencil-square fs-5"></i>
+                    <span>Method A: Manual Recipient Entry</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link py-2 fw-semibold d-flex align-items-center justify-content-center gap-2" id="csv-tab" data-bs-toggle="pill" data-bs-target="#csv-pane" type="button" role="tab">
+                    <i class="bi bi-file-earmark-spreadsheet fs-5"></i>
+                    <span>Method B: CSV File Upload & Preview</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="bulkTabsContent">
+            <!-- TAB 1: MANUAL ENTRY -->
+            <div class="tab-pane fade show active" id="manual-pane" role="tabpanel">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-card-checklist text-primary me-2"></i>
+                            Certificate Details & Program Information
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="manualGenerationForm" action="{{ url_for('bulk.submit_manual') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="recipients_json" id="recipientsJson">
+
+                            <div class="row g-3 mb-4">
+                                <!-- Organization Selection -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Organization <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="organization_id" id="manualOrgSelect" onchange="toggleManualNewOrg(this.value)">
+                                        <option value="">-- Choose Existing Organization --</option>
+                                        {% for org in organizations %}
+                                        <option value="{{ org.id }}" {% if selected_org_id == org.id %}selected{% endif %}>{{ org.name }} ({{ org.organization_type.capitalize() }})</option>
+                                        {% endfor %}
+                                        <option value="NEW">+ Register New Organization</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6" id="manualNewOrgContainer" style="display: none;">
+                                    <label class="form-label fw-semibold text-secondary">New Organization Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="new_organization_name" id="manualNewOrgName" placeholder="e.g. Stanford University">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Course or Event Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="course_name" id="manualCourseName" placeholder="e.g. Full-Stack Python Mastery 2026" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Certificate Title <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="certificate_title" id="manualCertTitle" value="Certificate of Completion" required>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Issue Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" name="issue_date" id="manualIssueDate" value="{{ today }}" required>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Completion Date (Optional)</label>
+                                    <input type="date" class="form-control" name="completion_date" id="manualCompletionDate" value="{{ today }}">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Signatory Name (Optional)</label>
+                                    <input type="text" class="form-control" name="signatory_name" id="manualSignatoryName" placeholder="e.g. Dr. Rajesh Kumar">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Signatory Designation (Optional)</label>
+                                    <input type="text" class="form-control" name="signatory_designation" id="manualSignatoryDesig" placeholder="e.g. Academic Director">
+                                </div>
+                            </div>
+
+                            <!-- Recipients Section -->
+                            <div class="border-top pt-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people me-2 text-primary"></i>Recipients List</h6>
+                                        <small class="text-muted">Enter recipient details manually or add multiple rows</small>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCertificatePreview()">
+                                            <i class="bi bi-eye me-1"></i> Preview Template
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRecipientRow()">
+                                            <i class="bi bi-person-plus-fill me-1"></i> Add Recipient Row
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered align-middle" id="recipientsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 50px;">#</th>
+                                                <th>Recipient Full Name <span class="text-danger">*</span></th>
+                                                <th>Email Address <span class="text-danger">*</span></th>
+                                                <th style="width: 70px;" class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recipientsBody">
+                                            <!-- Row 1 -->
+                                            <tr class="recipient-row">
+                                                <td class="text-center text-muted fw-semibold row-num">1</td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm rec-name" placeholder="Full Name (e.g. Rakshith Kumar)" required>
+                                                </td>
+                                                <td>
+                                                    <input type="email" class="form-control form-control-sm rec-email" placeholder="Email (e.g. rakshith@example.com)" required>
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeRecipientRow(this)" title="Remove row">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <!-- Row 2 -->
+                                            <tr class="recipient-row">
+                                                <td class="text-center text-muted fw-semibold row-num">2</td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm rec-name" placeholder="Full Name (e.g. Priya Sharma)">
+                                                </td>
+                                                <td>
+                                                    <input type="email" class="form-control form-control-sm rec-email" placeholder="Email (e.g. priya@example.com)">
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeRecipientRow(this)" title="Remove row">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small" id="recipientCountText">2 recipient rows configured</span>
+                                    <button type="submit" class="btn btn-primary px-4 py-2 shadow-sm" onclick="return validateAndSubmitManual(event)">
+                                        <i class="bi bi-send-check me-2"></i> Launch Generation Job
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: CSV UPLOAD -->
+            <div class="tab-pane fade" id="csv-pane" role="tabpanel">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>
+                            Batch Upload via CSV File
+                        </h5>
+                        <a href="{{ url_for('bulk.download_sample_csv') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </a>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="{{ url_for('bulk.upload_csv') }}" method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Organization <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="organization_id" id="csvOrgSelect" onchange="toggleCsvNewOrg(this.value)" required>
+                                        <option value="">-- Choose Existing Organization --</option>
+                                        {% for org in organizations %}
+                                        <option value="{{ org.id }}" {% if selected_org_id == org.id %}selected{% endif %}>{{ org.name }} ({{ org.organization_type.capitalize() }})</option>
+                                        {% endfor %}
+                                        <option value="NEW">+ Register New Organization</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6" id="csvNewOrgContainer" style="display: none;">
+                                    <label class="form-label fw-semibold text-secondary">New Organization Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="new_organization_name" placeholder="e.g. Oxford Institute">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Course or Event Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="course_name" placeholder="e.g. Cloud Architecture Bootcamp" required>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-secondary">Certificate Title <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="certificate_title" value="Certificate of Completion" required>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Issue Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" name="issue_date" value="{{ today }}" required>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Completion Date (Optional)</label>
+                                    <input type="date" class="form-control" name="completion_date" value="{{ today }}">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Signatory Name (Optional)</label>
+                                    <input type="text" class="form-control" name="signatory_name" placeholder="e.g. Dr. Jane Smith">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary">Signatory Designation (Optional)</label>
+                                    <input type="text" class="form-control" name="signatory_designation" placeholder="e.g. Program Director">
+                                </div>
+                            </div>
+
+                            <!-- File Upload Area -->
+                            <div class="border rounded p-4 text-center bg-light mb-4">
+                                <i class="bi bi-cloud-arrow-up text-primary display-4 mb-2 d-block"></i>
+                                <h6 class="fw-bold mb-1">Select or drop your recipient CSV file</h6>
+                                <p class="text-muted small mb-3">File must contain <code>name</code> and <code>email</code> headers. Max size: 10MB.</p>
+                                <div class="col-md-6 mx-auto">
+                                    <input class="form-control" type="file" name="csv_file" accept=".csv" required>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="text-muted small">
+                                    <i class="bi bi-shield-check text-success me-1"></i> File is verified and previewed before any certificates are generated.
+                                </div>
+                                <button type="submit" class="btn btn-primary px-4 py-2 shadow-sm">
+                                    <i class="bi bi-table me-2"></i> Upload & Preview CSV
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Certificate Preview Modal -->
+<div class="modal fade" id="certPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 bg-light py-2">
+                <h6 class="modal-title fw-bold text-dark"><i class="bi bi-eye text-primary me-2"></i>Certificate Template Live Preview</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="previewModalContent" style="min-height: 480px; overflow-x: auto; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                <div class="spinner-border text-primary my-5" role="status"></div>
+            </div>
+            <div class="modal-footer border-0 py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close Preview</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bulk_generation.js') }}"></script>
+{% endblock %}

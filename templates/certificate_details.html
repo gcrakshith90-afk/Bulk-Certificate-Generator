@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Certificate - {{ cert.certificate_code }}{% endblock %}
+{% block page_title %}Certificate Record{% endblock %}
+{% block page_subtitle %}Details and verification for {{ cert.certificate_code }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-patch-check-fill text-primary fs-5"></i>
+                    <h5 class="fw-bold mb-0 text-dark">Certificate {{ cert.certificate_code }}</h5>
+                </div>
+                <div>
+                    {% if cert.status == 'Completed' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2"><i class="bi bi-check-circle me-1"></i>Completed & Verified</span>
+                    {% elif cert.status == 'Failed' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2"><i class="bi bi-x-circle me-1"></i>Generation Failed</span>
+                    {% elif cert.status == 'Processing' %}
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Processing</span>
+                    {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary border px-3 py-2"><i class="bi bi-clock me-1"></i>Pending</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                {% if cert.status == 'Failed' and cert.error_message %}
+                <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <div>
+                        <strong>Generation Error:</strong> {{ cert.error_message }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Recipient Full Name</label>
+                        <h5 class="fw-bold text-dark mb-0">{{ cert.recipient_name }}</h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Recipient Email Address</label>
+                        <div class="fw-semibold text-dark">{{ cert.recipient_email }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Issuing Organization</label>
+                        <div class="fw-semibold text-dark">
+                            <a href="{{ url_for('organizations.view_org', org_id=cert.job.organization.id) }}" class="text-decoration-none">
+                                {{ cert.job.organization.name }}
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Course or Event</label>
+                        <div class="fw-semibold text-dark">{{ cert.job.course_name }}</div>
+                        <small class="text-muted">{{ cert.job.certificate_title }}</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Issue Date</label>
+                        <div class="fw-semibold text-dark">{{ cert.job.issue_date.strftime('%B %d, %Y') }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Completion Date</label>
+                        <div class="fw-semibold text-dark">
+                            {{ cert.job.completion_date.strftime('%B %d, %Y') if cert.job.completion_date else 'Not specified' }}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Signatory Details</label>
+                        <div class="fw-semibold text-dark">
+                            {{ cert.job.signatory_name or 'Authorized Signatory' }}
+                        </div>
+                        <small class="text-muted">{{ cert.job.signatory_designation or cert.job.organization.name }}</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Generation Job</label>
+                        <div class="fw-semibold text-dark">
+                            <a href="{{ url_for('jobs.view_job', job_id=cert.job.id) }}" class="text-decoration-none">
+                                Job #{{ cert.job.id }} ({{ cert.job.source_type|upper }})
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">Record Created</label>
+                        <div class="small text-muted">{{ cert.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small d-block">PDF Generated At</label>
+                        <div class="small text-muted">{{ cert.generated_at.strftime('%Y-%m-%d %H:%M:%S UTC') if cert.generated_at else 'Not generated yet' }}</div>
+                    </div>
+                </div>
+
+                <div class="border-top pt-4 mt-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <a href="{{ url_for('certificates.list_certificates') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Certificate Library
+                    </a>
+
+                    {% if cert.status == 'Completed' and cert.file_path %}
+                    <a href="{{ url_for('certificates.download_certificate', cert_id=cert.id) }}" class="btn btn-primary px-4 shadow-sm">
+                        <i class="bi bi-download me-2"></i> Download Certificate PDF
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

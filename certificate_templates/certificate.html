@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ certificate_title }} - {{ recipient_name }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            width: 297mm;
+            height: 210mm;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cert-outer-border {
+            width: 285mm;
+            height: 198mm;
+            border: 4px solid #1e3a8a;
+            padding: 5mm;
+            position: relative;
+            background: #ffffff;
+        }
+        .cert-inner-border {
+            width: 100%;
+            height: 100%;
+            border: 1.5px solid #d97706;
+            padding: 20mm 25mm 15mm 25mm;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            background: radial-gradient(circle at center, #ffffff 60%, #f8fafc 100%);
+        }
+        .corner-decoration {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border: 2px solid #d97706;
+        }
+        .corner-top-left { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+        .corner-top-right { top: 6px; right: 6px; border-left: none; border-bottom: none; }
+        .corner-bottom-left { bottom: 6px; left: 6px; border-right: none; border-top: none; }
+        .corner-bottom-right { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+
+        .org-header {
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 16pt;
+            font-weight: 700;
+            color: #1e3a8a;
+            margin-bottom: 4mm;
+        }
+        .cert-title {
+            font-size: 26pt;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 3mm;
+        }
+        .cert-subtitle {
+            font-size: 12pt;
+            font-style: italic;
+            color: #64748b;
+            margin-bottom: 6mm;
+        }
+        .recipient-name {
+            font-size: 30pt;
+            font-weight: 700;
+            color: #1e3a8a;
+            border-bottom: 2px solid #d97706;
+            display: inline-block;
+            padding: 0 25mm 3mm 25mm;
+            margin-bottom: 6mm;
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+        .presentation-text {
+            font-size: 13pt;
+            color: #334155;
+            line-height: 1.6;
+            max-width: 200mm;
+            margin: 0 auto 5mm auto;
+        }
+        .course-highlight {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 15pt;
+        }
+
+        .cert-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 5mm;
+        }
+        .signatory-box {
+            text-align: center;
+            width: 65mm;
+        }
+        .signature-line {
+            border-top: 1.5px solid #64748b;
+            margin-top: 12mm;
+            padding-top: 2mm;
+            font-size: 11pt;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .signature-title {
+            font-size: 9.5pt;
+            color: #64748b;
+        }
+
+        .badge-seal {
+            width: 45mm;
+            height: 45mm;
+            border-radius: 50%;
+            border: 3px double #d97706;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fffbeb;
+            color: #b45309;
+            box-shadow: 0 0 10px rgba(217, 119, 6, 0.15);
+            margin: 0 auto;
+        }
+        .seal-star {
+            font-size: 14pt;
+        }
+        .seal-text {
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .meta-box {
+            text-align: left;
+            width: 65mm;
+            font-size: 9pt;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .meta-box strong {
+            color: #334155;
+        }
+        .cert-code {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            color: #1e3a8a;
+            font-size: 9.5pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="cert-outer-border">
+        <div class="cert-inner-border">
+            <div class="corner-decoration corner-top-left"></div>
+            <div class="corner-decoration corner-top-right"></div>
+            <div class="corner-decoration corner-bottom-left"></div>
+            <div class="corner-decoration corner-bottom-right"></div>
+
+            <!-- Top Header -->
+            <div>
+                <div class="org-header">{{ organization_name }}</div>
+                <div class="cert-title">{{ certificate_title }}</div>
+                <div class="cert-subtitle">This certificate is proudly presented to</div>
+                <div class="recipient-name">{{ recipient_name }}</div>
+            </div>
+
+            <!-- Body Description -->
+            <div>
+                <div class="presentation-text">
+                    For successfully participating in and completing the program
+                    <div class="course-highlight">{{ course_name }}</div>
+                    {% if completion_date %}
+                    completed on <strong>{{ completion_date.strftime('%B %d, %Y') }}</strong>, 
+                    {% endif %}
+                    demonstrating dedication, academic excellence, and commendable performance.
+                </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div class="cert-footer">
+                <div class="meta-box">
+                    <div><strong>Issue Date:</strong> {{ issue_date.strftime('%B %d, %Y') }}</div>
+                    <div><strong>Certificate ID:</strong> <span class="cert-code">{{ certificate_code }}</span></div>
+                    <div><strong>Recipient Email:</strong> {{ recipient_email }}</div>
+                    <div><strong>Status:</strong> Verified & Authentic</div>
+                </div>
+
+                <div class="badge-seal">
+                    <div class="seal-star">&#9733; &#9733; &#9733;</div>
+                    <div class="seal-text">CERTIFIED</div>
+                    <div class="seal-text" style="font-size: 6.5pt; margin-top: 1mm;">EXCELLENCE</div>
+                </div>
+
+                <div class="signatory-box">
+                    {% if signatory_name %}
+                    <div class="signature-line">{{ signatory_name }}</div>
+                    <div class="signature-title">{{ signatory_designation or 'Authorized Signatory' }}</div>
+                    {% else %}
+                    <div class="signature-line">Authorized Signatory</div>
+                    <div class="signature-title">{{ organization_name }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

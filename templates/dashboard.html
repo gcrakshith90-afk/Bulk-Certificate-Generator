@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+{% block page_subtitle %}Real-time metrics, system performance, and generation activity{% endblock %}
+
+{% block content %}
+<!-- Quick Action Buttons & Date Filter Bar -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body p-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <!-- Quick Actions -->
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('bulk.generate') }}" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Generate Certificates</span>
+                </a>
+                <a href="{{ url_for('bulk.generate') }}#csv-pane" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                    <span>Upload CSV</span>
+                </a>
+                <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-cpu"></i>
+                    <span>View Jobs</span>
+                </a>
+                <a href="{{ url_for('certificates.list_certificates') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-search"></i>
+                    <span>Search Certificates</span>
+                </a>
+            </div>
+
+            <!-- Date Range Filter -->
+            <form method="GET" action="{{ url_for('dashboard.index') }}" class="d-flex flex-wrap align-items-center gap-2 m-0">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-muted">From</span>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+                </div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-muted">To</span>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                {% if start_date or end_date %}
+                <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-sm" title="Reset Dates"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 8 Summary Metric Cards -->
+<div class="row g-3 mb-4">
+    <!-- Total Certificates Generated -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Total Generated</span>
+                <div class="stat-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-patch-check"></i>
+                </div>
+            </div>
+            <div class="stat-val text-primary">{{ stats.total_certificates }}</div>
+            <small class="text-muted">All recipient records</small>
+        </div>
+    </div>
+
+    <!-- Successful Certificates -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Successful Certs</span>
+                <div class="stat-icon bg-success-subtle text-success">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+            </div>
+            <div class="stat-val text-success">{{ stats.successful_certificates }}</div>
+            <small class="text-success fw-semibold"><i class="bi bi-arrow-up-right me-1"></i>PDFs verified on disk</small>
+        </div>
+    </div>
+
+    <!-- Failed Certificates -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Failed Certs</span>
+                <div class="stat-icon bg-danger-subtle text-danger">
+                    <i class="bi bi-x-octagon"></i>
+                </div>
+            </div>
+            <div class="stat-val text-danger">{{ stats.failed_certificates }}</div>
+            <small class="text-muted">Eligible for 1-click retry</small>
+        </div>
+    </div>
+
+    <!-- Overall Success Rate -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Success Rate</span>
+                <div class="stat-icon bg-info-subtle text-info">
+                    <i class="bi bi-percent"></i>
+                </div>
+            </div>
+            <div class="stat-val text-info">{{ stats.overall_success_rate }}%</div>
+            <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar bg-info" role="progressbar" style="width: {{ stats.overall_success_rate }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Generation Jobs -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Total Jobs</span>
+                <div class="stat-icon bg-secondary-subtle text-secondary">
+                    <i class="bi bi-cpu"></i>
+                </div>
+            </div>
+            <div class="stat-val text-dark">{{ stats.total_jobs }}</div>
+            <small class="text-muted">Batches dispatched</small>
+        </div>
+    </div>
+
+    <!-- Jobs Currently Processing -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Active Jobs</span>
+                <div class="stat-icon bg-warning-subtle text-warning">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+            </div>
+            <div class="stat-val text-warning">{{ stats.processing_jobs }}</div>
+            <small class="text-muted">Queued or running</small>
+        </div>
+    </div>
+
+    <!-- Certificates Pending Generation -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Pending Certs</span>
+                <div class="stat-icon bg-light text-secondary border">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+            </div>
+            <div class="stat-val text-secondary">{{ stats.pending_certificates }}</div>
+            <small class="text-muted">Waiting in worker queue</small>
+        </div>
+    </div>
+
+    <!-- Total Organizations -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="stat-label">Organizations</span>
+                <div class="stat-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-building"></i>
+                </div>
+            </div>
+            <div class="stat-val text-primary">{{ stats.total_organizations }}</div>
+            <small class="text-muted">Colleges, companies, orgs</small>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <!-- Chart 1: Certificates Per Day -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-graph-up text-primary me-2"></i>
+                    Certificates Generated Per Day
+                </h6>
+                <span class="badge bg-light text-dark border">Last 7 Days</span>
+            </div>
+            <div class="card-body p-3">
+                <div style="height: 280px; position: relative;">
+                    <canvas id="certsPerDayChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: Successful vs Failed vs Pending -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart text-success me-2"></i>
+                    Status Distribution
+                </h6>
+            </div>
+            <div class="card-body p-3 d-flex align-items-center justify-content-center">
+                <div style="height: 260px; width: 100%; position: relative;">
+                    <canvas id="statusDonutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 3: Generation Volume by Organization -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-bar-chart-line text-info me-2"></i>
+                    Volume by Organization
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div style="height: 260px; position: relative;">
+                    <canvas id="orgVolumeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 4: Jobs Grouped by Status -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-kanban text-warning me-2"></i>
+                    Generation Jobs by Status
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div style="height: 260px; position: relative;">
+                    <canvas id="jobsStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Jobs Table & Recent System Activity -->
+<div class="row g-4">
+    <!-- Recent Jobs Table -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-clock me-2 text-primary"></i>
+                    Recent Generation Jobs
+                </h6>
+                <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-primary btn-sm">View All Jobs</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Organization</th>
+                            <th>Course / Event</th>
+                            <th>Total</th>
+                            <th>Success / Fail</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if recent_jobs %}
+                            {% for job in recent_jobs %}
+                            <tr>
+                                <td class="fw-bold">
+                                    <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="text-decoration-none">
+                                        #{{ job.id }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark text-truncate" style="max-width: 140px;">{{ job.organization.name }}</div>
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 160px;">{{ job.course_name }}</div>
+                                </td>
+                                <td class="fw-semibold">{{ job.total }}</td>
+                                <td>
+                                    <span class="text-success">{{ job.completed }}</span> / 
+                                    <span class="{% if job.failed > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">{{ job.failed }}</span>
+                                </td>
+                                <td style="width: 110px;">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar {% if job.failed > 0 %}bg-warning{% else %}bg-primary{% endif %}" style="width: {{ job.progress_percentage }}%"></div>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.72rem;">{{ job.progress_percentage }}%</small>
+                                </td>
+                                <td>
+                                    <span class="badge-status status-{{ job.status|lower|replace(' ', '-') }}">
+                                        {{ job.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="btn btn-sm btn-light border">Details</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8">
+                                    <div class="empty-state py-4 text-center">
+                                        <p class="text-muted mb-2">No generation jobs created yet.</p>
+                                        <a href="{{ url_for('bulk.generate') }}" class="btn btn-sm btn-primary">Generate First Batch</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent System Activity -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-activity me-2 text-primary"></i>
+                    Recent System Activity
+                </h6>
+                <a href="{{ url_for('activity.list_logs') }}" class="btn btn-outline-secondary btn-sm">All Logs</a>
+            </div>
+            <div class="card-body p-3" style="max-height: 480px; overflow-y: auto;">
+                {% if recent_activities %}
+                    <ul class="list-unstyled mb-0">
+                        {% for act in recent_activities %}
+                        <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom">
+                            <div class="rounded-circle p-2 mt-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: #f1f5f9;">
+                                {% if 'GENERATED' in act.event_type %}
+                                    <i class="bi bi-file-earmark-check text-success" style="font-size: 0.9rem;"></i>
+                                {% elif 'FAILED' in act.event_type %}
+                                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 0.9rem;"></i>
+                                {% elif 'JOB' in act.event_type %}
+                                    <i class="bi bi-cpu text-primary" style="font-size: 0.9rem;"></i>
+                                {% elif 'CSV' in act.event_type %}
+                                    <i class="bi bi-file-spreadsheet text-info" style="font-size: 0.9rem;"></i>
+                                {% elif 'DOWNLOAD' in act.event_type %}
+                                    <i class="bi bi-download text-success" style="font-size: 0.9rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-bell text-secondary" style="font-size: 0.9rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">{{ act.event_type }}</span>
+                                    <span class="text-muted" style="font-size: 0.72rem;">{{ act.created_at.strftime('%H:%M:%S') }}</span>
+                                </div>
+                                <p class="mb-0 text-dark small mt-1 text-break">{{ act.description }}</p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="empty-state py-4 text-center">
+                        <p class="text-muted small mb-0">No system activities recorded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

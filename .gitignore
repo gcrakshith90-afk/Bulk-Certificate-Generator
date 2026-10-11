@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+instance/
+.env
+generated_certificates/
+uploads/
+temp_zips/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+*.db
+*.sqlite3
